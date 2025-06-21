@@ -104,12 +104,12 @@ The service will automatically load all process configurations from the file on 
 
 ### Environment Variables
 
-| Variable                        | Default     | Description                     |
-| ------------------------------- | ----------- | ------------------------------- |
-| `PROCESS_MANAGER_HOST`          | `127.0.0.1` | API server host address         |
-| `PROCESS_MANAGER_PORT`          | `53211`     | API server port                 |
-| `PROCESS_MANAGER_API_KEY`       | (built-in)  | API authentication key          |
-| `PROCESS_MANAGER_AUTO_START`    | `true`      | Auto-start configured processes |
+| Variable                     | Default     | Description                     |
+| ---------------------------- | ----------- | ------------------------------- |
+| `PROCESS_MANAGER_HOST`       | `127.0.0.1` | API server host address         |
+| `PROCESS_MANAGER_PORT`       | `53211`     | API server port                 |
+| `PROCESS_MANAGER_API_KEY`    | (built-in)  | API authentication key          |
+| `PROCESS_MANAGER_AUTO_START` | `true`      | Auto-start configured processes |
 
 ### Auto-Start Configuration
 
@@ -147,6 +147,56 @@ export PROCESS_MANAGER_AUTO_START="true"
 ./openlist-desktop-service
 ```
 
+## Running the Service
+
+### Windows Service Mode (Production)
+
+When installed as a Windows service, the application runs through the Windows Service Control Manager (SCM):
+
+```bash
+# Install as service
+.\install-openlist-service.exe
+
+# The service will start automatically
+# Control via Windows Services or command line:
+sc start openlist_desktop_service
+sc stop openlist_desktop_service
+```
+
+### Windows Console Mode (Development/Testing)
+
+For development and testing purposes, you can run the service directly in console mode:
+
+```bash
+# Run in console mode (bypasses Windows Service Manager)
+.\openlist-desktop-service.exe --console
+# or
+.\openlist-desktop-service.exe -c
+```
+
+**Note:** If you try to run the Windows service executable without the `--console` flag, you'll get error 1063 ("The service process could not connect to the service controller"). This is because Windows service executables must be launched by the Service Control Manager, not directly.
+
+### Linux/macOS (Standard Mode)
+
+On Linux and macOS, the service runs as a standard application:
+
+```bash
+# Direct execution
+./openlist-desktop-service
+
+# With systemd (Linux)
+sudo systemctl start openlist-desktop-service
+sudo systemctl stop openlist-desktop-service
+
+# With OpenRC (Linux)
+sudo rc-service openlist-desktop-service start
+sudo rc-service openlist-desktop-service stop
+
+# With launchd (macOS)
+launchctl start io.github.openlistteam.openlist.service
+launchctl stop io.github.openlistteam.openlist.service
+```
+
 ## API Endpoints
 
 ### Authentication
@@ -161,27 +211,20 @@ Authorization: Bearer your-api-key
 
 ### Process Management Endpoints
 
-| Method | Endpoint                            | Description                     |
-| ------ | ----------------------------------- | ------------------------------- |
-| GET    | `/health`                           | Health check (no auth)          |
-| GET    | `/api/v1/status`                    | Get service status              |
-| GET    | `/api/v1/version`                   | Get version information         |
-| GET    | `/api/v1/processes`                 | List all processes              |
-| POST   | `/api/v1/processes`                 | Create new process              |
-| GET    | `/api/v1/processes/:id`             | Get process details             |
-| PUT    | `/api/v1/processes/:id`             | Update process configuration    |
-| DELETE | `/api/v1/processes/:id`             | Delete process                  |
-| POST   | `/api/v1/processes/:id/start`       | Start process                   |
-| POST   | `/api/v1/processes/:id/stop`        | Stop process                    |
-| GET    | `/api/v1/processes/:id/logs`        | Get process logs                |
-
-### Legacy Endpoints (Backward Compatibility)
-
-| Method | Endpoint          | Description                     |
-| ------ | ----------------- | ------------------------------- |
-| POST   | `/api/v1/start`   | Start legacy process            |
-| POST   | `/api/v1/stop`    | Stop all processes              |
-| POST   | `/api/v1/shutdown`| Shutdown entire service         |
+| Method | Endpoint                      | Description                  |
+| ------ | ----------------------------- | ---------------------------- |
+| GET    | `/health`                     | Health check (no auth)       |
+| GET    | `/api/v1/status`              | Get service status           |
+| GET    | `/api/v1/version`             | Get version information      |
+| POST   | `/api/v1/shutdown`            | Shutdown entire service      |
+| GET    | `/api/v1/processes`           | List all processes           |
+| POST   | `/api/v1/processes`           | Create new process           |
+| GET    | `/api/v1/processes/:id`       | Get process details          |
+| PUT    | `/api/v1/processes/:id`       | Update process configuration |
+| DELETE | `/api/v1/processes/:id`       | Delete process               |
+| POST   | `/api/v1/processes/:id/start` | Start process                |
+| POST   | `/api/v1/processes/:id/stop`  | Stop process                 |
+| GET    | `/api/v1/processes/:id/logs`  | Get process logs             |
 
 ### Usage Examples
 

@@ -165,7 +165,6 @@ async fn get_service_version() -> impl IntoResponse {
     }
 }
 
-// New process management endpoints
 async fn create_process_api(Json(payload): Json<CreateProcessRequest>) -> impl IntoResponse {
     info!("Handling POST /api/v1/processes request");
 
@@ -416,14 +415,9 @@ pub async fn run_ipc_server() -> Result<()> {
         host, DEFAULT_HTTP_SERVER_HOST
     );
     info!(
-        "  PROCESS_MANAGER_PORT={} (default: {})",
-        port, DEFAULT_HTTP_SERVER_PORT
+        "  PROCESS_MANAGER_PORT={} (default: {})",        port, DEFAULT_HTTP_SERVER_PORT
     );
     info!("  PROCESS_MANAGER_API_KEY=*** (default: use built-in key)");
-    info!(
-        "  PROCESS_MANAGER_AUTO_START={} (default: true)",
-        std::env::var("PROCESS_MANAGER_AUTO_START").unwrap_or_else(|_| "true".to_string())
-    );
     info!("");
     info!("API endpoints:");
     info!("  GET  /health - Health check");

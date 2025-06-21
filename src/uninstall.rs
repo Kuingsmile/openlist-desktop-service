@@ -170,7 +170,7 @@ fn uninstall_openrc_service(service_name: &str) -> Result<()> {
 #[cfg(windows)]
 fn main() -> windows_service::Result<()> {
     use constants::SERVICE_NAME;
-    use std::{thread, time::Duration};
+    use std::{io::Write, thread, time::Duration};
     use windows_service::{
         service::{ServiceAccess, ServiceState},
         service_manager::{ServiceManager, ServiceManagerAccess},
@@ -192,16 +192,47 @@ fn main() -> windows_service::Result<()> {
             eprintln!("Failed to open service '{}': {}", SERVICE_NAME, e);
             e
         })?;
-
     let service_status = service.query_status()?;
     if service_status.current_state != ServiceState::Stopped {
         println!("Stopping service...");
         match service.stop() {
             Ok(_) => {
-                println!("Service stopped successfully.");
-                thread::sleep(Duration::from_secs(2));
+                println!("Service stop command sent successfully.");
+                let mut attempts = 0;
+                loop {
+                    thread::sleep(Duration::from_millis(500));
+                    attempts += 1;
+
+                    match service.query_status() {
+                        Ok(status) if status.current_state == ServiceState::Stopped => {
+                            println!("Service stopped successfully.");
+                            break;
+                        }
+                        Ok(_) if attempts < 10 => {
+                            print!(".");
+                            std::io::stdout().flush().unwrap_or(());
+                            continue;
+                        }
+                        Ok(_) => {
+                            println!(
+                                "\nService is taking longer than expected to stop, but continuing with removal..."
+                            );
+                            break;
+                        }
+                        Err(_) => {
+                            println!("\nCannot query service status, assuming it has stopped.");
+                            break;
+                        }
+                    }
+                }
             }
-            Err(err) => eprintln!("Warning: Failed to stop service: {}", err),
+            Err(err) => {
+                eprintln!("Warning: Failed to send stop command to service: {}", err);
+                println!(
+                    "This may be because the service is already stopped or in an invalid state."
+                );
+                println!("Continuing with service removal...");
+            }
         }
     } else {
         println!("Service was already stopped.");

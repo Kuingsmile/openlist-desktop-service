@@ -16,7 +16,8 @@ pub struct ProcessConfig {
     pub working_dir: Option<String>,
     pub env_vars: Option<HashMap<String, String>>,
     pub auto_restart: bool,
-    pub run_as_admin: bool, // New field for admin/root privileges
+    pub auto_start: bool,
+    pub run_as_admin: bool,
     pub created_at: u64,
     pub updated_at: u64,
 }
@@ -42,7 +43,8 @@ pub struct CreateProcessRequest {
     pub working_dir: Option<String>,
     pub env_vars: Option<HashMap<String, String>>,
     pub auto_restart: Option<bool>,
-    pub run_as_admin: Option<bool>, // New field for admin/root privileges
+    pub auto_start: Option<bool>,
+    pub run_as_admin: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -54,7 +56,8 @@ pub struct UpdateProcessRequest {
     pub working_dir: Option<String>,
     pub env_vars: Option<HashMap<String, String>>,
     pub auto_restart: Option<bool>,
-    pub run_as_admin: Option<bool>, // New field for admin/root privileges
+    pub auto_start: Option<bool>,
+    pub run_as_admin: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -82,13 +85,6 @@ pub struct LogResponse {
     pub log_content: String,
     pub total_lines: usize,
     pub fetched_lines: usize,
-}
-
-// Legacy support for backward compatibility
-#[derive(Default, Debug, Deserialize, Serialize, Clone)]
-pub struct StartBody {
-    pub bin_path: String,
-    pub log_file: String,
 }
 
 #[derive(Deserialize, Serialize)]
