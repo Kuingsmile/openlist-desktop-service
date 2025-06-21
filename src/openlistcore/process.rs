@@ -35,7 +35,7 @@ pub fn ensure_executable_permissions(binary_path: &str) -> io::Result<()> {
         std::fs::set_permissions(path, new_permissions)?;
         info!("Successfully added execute permissions to {}", binary_path);
     } else {
-        debug!("Binary {} already has execute permissions", binary_path);
+        info!("Binary {} already has execute permissions", binary_path);
     }
 
     Ok(())

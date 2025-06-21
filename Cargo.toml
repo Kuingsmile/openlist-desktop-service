@@ -1,10 +1,10 @@
 [package]
-name = "openlist-desktop-service"
+name = "openlist_desktop_service"
 version = "1.0.0"
 edition = "2024"
 authors = ["Kuingsmile"]
 license = "GPL-3.0"
-repository = "https://github.com/Kuingsmile/service-demo.git"
+repository = "https://github.com/Kuingsmile/openlist-desktop-service.git"
 
 [[bin]]
 name = "openlist-desktop-service"

@@ -799,7 +799,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 
 [[package]]
-name = "openlist-desktop-service"
+name = "openlist_desktop_service"
 version = "1.0.0"
 dependencies = [
  "anyhow",
