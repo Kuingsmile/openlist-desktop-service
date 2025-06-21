@@ -4,7 +4,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-use log::{debug, error, info, warn};
+use log::{error, info, warn};
 
 #[cfg(not(target_os = "windows"))]
 pub fn ensure_executable_permissions(binary_path: &str) -> io::Result<()> {
@@ -62,22 +62,152 @@ fn get_working_directory(command: &str) -> &Path {
     Path::new(".")
 }
 
-pub fn spawn_process(command: &str, args: &[&str], mut log: std::fs::File) -> io::Result<u32> {
-    let _ = writeln!(log, "Spawning process: {} {}", command, args.join(" "));
+pub fn spawn_process_with_privileges(
+    command: &str,
+    args: &[&str],
+    mut log: std::fs::File,
+    run_as_admin: bool,
+) -> io::Result<u32> {
+    let _ = writeln!(
+        log,
+        "Spawning process: {} {} (admin: {})",
+        command,
+        args.join(" "),
+        run_as_admin
+    );
     log.flush()?;
 
-    info!("Starting process: {} {}", command, args.join(" "));
+    info!(
+        "Starting process: {} {} (admin: {})",
+        command,
+        args.join(" "),
+        run_as_admin
+    );
 
     let working_dir = get_working_directory(command);
-
     info!("Setting working directory to: {}", working_dir.display());
 
     let log_for_stderr = log.try_clone()?;
+    #[cfg(target_os = "windows")]
+    {
+        if run_as_admin {
+            info!("Running process with administrator privileges on Windows");
+            // On Windows, we need to use runas or start the process elevated
+            // We'll use PowerShell's Start-Process with -Verb RunAs
+
+            let escaped_args = args
+                .iter()
+                .map(|arg| format!("'{}'", arg.replace("'", "''")))
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            let ps_command = if args.is_empty() {
+                format!(
+                    "Start-Process -FilePath '{}' -Verb RunAs -WindowStyle Hidden",
+                    command
+                )
+            } else {
+                format!(
+                    "Start-Process -FilePath '{}' -ArgumentList @({}) -Verb RunAs -WindowStyle Hidden",
+                    command, escaped_args
+                )
+            };
+
+            let child = Command::new("powershell")
+                .args(["-Command", &ps_command])
+                .current_dir(working_dir)
+                .stdout(Stdio::from(log))
+                .stderr(Stdio::from(log_for_stderr))
+                .spawn()?;
+
+            let pid = child.id();
+            info!(
+                "Child process started successfully with admin privileges, PID: {}, working dir: {}",
+                pid,
+                working_dir.display()
+            );
+
+            Ok(pid)
+        } else {
+            let child = Command::new(command)
+                .args(args)
+                .current_dir(working_dir)
+                .stdout(Stdio::from(log))
+                .stderr(Stdio::from(log_for_stderr))
+                .spawn()?;
+
+            let pid = child.id();
+            info!(
+                "Child process started successfully, PID: {}, working dir: {}",
+                pid,
+                working_dir.display()
+            );
+
+            Ok(pid)
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let mut command_to_run = command.to_string();
+        let mut args_to_run = args.to_vec();
+
+        if run_as_admin {
+            info!("Running process with root privileges on Linux using sudo");
+            // Check if sudo is available
+            if Command::new("which")
+                .arg("sudo")
+                .output()
+                .map_or(false, |o| o.status.success())
+            {
+                // Prepend sudo to the command
+                args_to_run.insert(0, command);
+                command_to_run = "sudo".to_string();
+            } else {
+                warn!("sudo not available, running without elevated privileges");
+            }
+        }
+
+        let child = Command::new(&command_to_run)
+            .args(&args_to_run)
+            .current_dir(working_dir)
+            .stdout(Stdio::from(log))
+            .stderr(Stdio::from(log_for_stderr))
+            .spawn()?;
+
+        let pid = child.id();
+        info!(
+            "Child process started successfully, PID: {}, working dir: {}",
+            pid,
+            working_dir.display()
+        );
+
+        Ok(pid)
+    }
 
     #[cfg(target_os = "macos")]
     {
-        let child = Command::new(command)
-            .args(args)
+        let mut command_to_run = command.to_string();
+        let mut args_to_run = args.to_vec();
+
+        if run_as_admin {
+            info!("Running process with administrator privileges on macOS using sudo");
+            // Check if sudo is available
+            if Command::new("which")
+                .arg("sudo")
+                .output()
+                .map_or(false, |o| o.status.success())
+            {
+                // Prepend sudo to the command
+                args_to_run.insert(0, command);
+                command_to_run = "sudo".to_string();
+            } else {
+                warn!("sudo not available, running without elevated privileges");
+            }
+        }
+
+        let child = Command::new(&command_to_run)
+            .args(&args_to_run)
             .current_dir(working_dir)
             .stdout(Stdio::from(log))
             .stderr(Stdio::from(log_for_stderr))
@@ -94,23 +224,6 @@ pub fn spawn_process(command: &str, args: &[&str], mut log: std::fs::File) -> io
             let _ = child.wait_with_output();
         });
 
-        Ok(pid)
-    }
-
-    #[cfg(not(target_os = "macos"))]
-    {
-        let child = Command::new(command)
-            .args(args)
-            .current_dir(working_dir)
-            .stdout(Stdio::from(log))
-            .stderr(Stdio::from(log_for_stderr))
-            .spawn()?;
-        let pid = child.id();
-        info!(
-            "Child process started successfully, PID: {}, working dir: {}",
-            pid,
-            working_dir.display()
-        );
         Ok(pid)
     }
 }
@@ -140,82 +253,6 @@ pub fn kill_process(pid: u32) -> io::Result<()> {
             stderr.trim()
         )))
     }
-}
-
-#[cfg(target_os = "windows")]
-pub fn find_processes(process_name: &str) -> io::Result<Vec<u32>> {
-    debug!("Searching for process: {}", process_name);
-
-    let output = Command::new("tasklist")
-        .args(["/FO", "CSV", "/NH"])
-        .output()?;
-
-    let output_str = if !output.stdout.is_empty() {
-        let (cow, _encoding_used, _had_errors) = encoding_rs::GBK.decode(&output.stdout);
-        cow.into_owned()
-    } else {
-        String::from("")
-    };
-
-    let mut pids = Vec::new();
-
-    for line in output_str.lines() {
-        let parts: Vec<&str> = line.split(',').collect();
-        if parts.len() >= 2 {
-            let name = parts[0].trim_matches('"');
-            if name.to_lowercase().contains(&process_name.to_lowercase()) {
-                if let Some(pid_str) = parts[1].trim_matches('"').split_whitespace().next() {
-                    if let Ok(pid) = pid_str.parse::<u32>() {
-                        pids.push(pid);
-                    }
-                }
-            }
-        }
-    }
-
-    info!("Found {} matching processes: {}", pids.len(), process_name);
-
-    Ok(pids)
-}
-
-#[cfg(target_os = "linux")]
-pub fn find_processes(process_name: &str) -> io::Result<Vec<u32>> {
-    debug!("Searching for process: {}", process_name);
-
-    let output = Command::new("pgrep").arg("-f").arg(process_name).output()?;
-
-    let output_str = String::from_utf8_lossy(&output.stdout);
-    let mut pids = Vec::new();
-
-    for line in output_str.lines() {
-        if let Ok(pid) = line.trim().parse::<u32>() {
-            pids.push(pid);
-        }
-    }
-
-    info!("Found {} matching processes: {}", pids.len(), process_name);
-
-    Ok(pids)
-}
-
-#[cfg(target_os = "macos")]
-pub fn find_processes(process_name: &str) -> io::Result<Vec<u32>> {
-    debug!("Searching for process: {}", process_name);
-
-    let output = Command::new("pgrep").arg("-f").arg(process_name).output()?;
-
-    let output_str = String::from_utf8_lossy(&output.stdout);
-    let mut pids = Vec::new();
-
-    for line in output_str.lines() {
-        if let Ok(pid) = line.trim().parse::<u32>() {
-            pids.push(pid);
-        }
-    }
-
-    info!("Found {} matching processes: {}", pids.len(), process_name);
-
-    Ok(pids)
 }
 
 #[cfg(not(target_os = "windows"))]

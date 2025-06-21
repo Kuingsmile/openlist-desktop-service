@@ -1,68 +1,149 @@
-# OpenList Desktop Service
+# Generic Process Manager Service
 
-A cross-platform desktop service with RESTful HTTP API for process management.
+A cross-platform desktop service with RESTful HTTP API for managing multiple processes.
 
 ## Architecture
 
-This service consists of two components:
+This service provides a generic process management system that can manage multiple processes with custom configurations. It includes:
 
 1. **HTTP API Service** - The persistent service that provides the REST API
-2. **Core Application** - The main OpenList application managed by the service
+2. **Process Management** - Manage multiple processes with custom binary paths, arguments, and configurations
+3. **Process Monitoring** - Track process status, PIDs, restart counts, and exit codes
+4. **Log Management** - Centralized logging for each managed process
 
-The HTTP API service runs continuously and provides endpoints to start/stop the core application. When you call `/api/v1/stop`, it stops the core application but leaves the HTTP API service running so you can start it again later.
+The HTTP API service runs continuously and provides endpoints to create, update, delete, start, and stop processes. Each process has a unique ID and can be configured independently.
 
 ## Features
 
-- RESTful HTTP API for service control
+- RESTful HTTP API for process management
 - Environment variable configuration
 - Simple API key authentication
 - Cross-platform support (Windows, Linux, macOS)
-- Process management and monitoring
+- Process monitoring and status tracking
+- Individual process log management
+- Unique process identification system
+- Backward compatibility with legacy endpoints
 
 ## Configuration
 
-The service can be configured using environment variables:
+The service can be configured using environment variables and will automatically persist process configurations to disk.
 
-| Variable              | Default     | Description                     |
-| --------------------- | ----------- | ------------------------------- |
-| `OPENLIST_HOST`       | `127.0.0.1` | API server host address         |
-| `OPENLIST_PORT`       | `53211`     | API server port                 |
-| `OPENLIST_API_KEY`    | (built-in)  | API authentication key          |
-| `OPENLIST_AUTO_START` | `true`      | Auto-start core on service boot |
+### Configuration File
+
+Process configurations are automatically saved to a platform-specific configuration file:
+
+- **Windows**: `%APPDATA%\OpenListService\process_configs.json`
+- **macOS**: `~/Library/Application Support/OpenListService/process_configs.json`
+- **Linux**: `~/.config/openlist-service/process_configs.json` (or `$XDG_CONFIG_HOME/openlist-service/process_configs.json`)
+
+The configuration file is automatically created when you add your first process and updated whenever you:
+
+- Create a new process
+- Update an existing process configuration
+- Delete a process
+
+On service startup, all previously configured processes are automatically loaded from this file.
+
+### Configuration File Format
+
+The configuration file is stored in JSON format and contains an array of process configurations. Here's an example:
+
+```json
+{
+  "processes": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "My Web Server",
+      "bin_path": "/path/to/server",
+      "args": ["--port", "8080", "--verbose"],
+      "log_file": "server.log",
+      "working_dir": "/path/to/workdir",
+      "env_vars": {
+        "NODE_ENV": "production",
+        "API_KEY": "secret"
+      },
+      "auto_restart": true,
+      "run_as_admin": false,
+      "created_at": 1640995100,
+      "updated_at": 1640995100
+    }
+  ]
+}
+```
+
+**Important Notes:**
+
+- Do not manually edit this file while the service is running, as changes will be overwritten
+- If you need to manually edit the configuration, stop the service first
+- Invalid configurations will be logged as errors during startup
+- The service will start normally even if some process configurations are invalid
+
+### Configuration Backup and Recovery
+
+Since process configurations are now persistent, you may want to back up your configuration file:
+
+**Backup:**
+
+```bash
+# Windows
+copy "%APPDATA%\OpenListService\process_configs.json" "backup_location\"
+
+# Linux/macOS
+cp ~/.config/openlist-service/process_configs.json /backup/location/
+# or for macOS
+cp "~/Library/Application Support/OpenListService/process_configs.json" /backup/location/
+```
+
+**Recovery:**
+
+1. Stop the service
+2. Replace the configuration file with your backup
+3. Start the service
+
+The service will automatically load all process configurations from the file on startup.
+
+### Environment Variables
+
+| Variable                        | Default     | Description                     |
+| ------------------------------- | ----------- | ------------------------------- |
+| `PROCESS_MANAGER_HOST`          | `127.0.0.1` | API server host address         |
+| `PROCESS_MANAGER_PORT`          | `53211`     | API server port                 |
+| `PROCESS_MANAGER_API_KEY`       | (built-in)  | API authentication key          |
+| `PROCESS_MANAGER_AUTO_START`    | `true`      | Auto-start configured processes |
 
 ### Auto-Start Configuration
 
-By default, the service will automatically start the core application when the service starts. You can control this behavior:
+By default, the service will automatically start any configured processes when the service starts. You can control this behavior:
 
-- `OPENLIST_AUTO_START=true` or `1`: Enable auto-start (default)
-- `OPENLIST_AUTO_START=false` or `0`: Disable auto-start, manual start required
+- `PROCESS_MANAGER_AUTO_START=true` or `1`: Enable auto-start (default)
+- `PROCESS_MANAGER_AUTO_START=false` or `0`: Disable auto-start, manual start required
 
 ### Setting Environment Variables
 
 **Windows (PowerShell):**
 
 ```powershell
-$env:OPENLIST_API_KEY="your-secure-api-key"
-$env:OPENLIST_PORT="8080"
-$env:OPENLIST_AUTO_START="true"
+$env:PROCESS_MANAGER_API_KEY="your-secure-api-key"
+$env:PROCESS_MANAGER_PORT="8080"
+$env:PROCESS_MANAGER_AUTO_START="true"
 ./openlist-desktop-service.exe
 ```
 
 **Windows (CMD):**
 
 ```cmd
-set OPENLIST_API_KEY=your-secure-api-key
-set OPENLIST_PORT=8080
-set OPENLIST_AUTO_START=true
+set PROCESS_MANAGER_API_KEY=your-secure-api-key
+set PROCESS_MANAGER_PORT=8080
+set PROCESS_MANAGER_AUTO_START=true
 openlist-desktop-service.exe
 ```
 
 **Linux/macOS:**
 
 ```bash
-export OPENLIST_API_KEY="your-secure-api-key"
-export OPENLIST_PORT="8080"
-export OPENLIST_AUTO_START="true"
+export PROCESS_MANAGER_API_KEY="your-secure-api-key"
+export PROCESS_MANAGER_PORT="8080"
+export PROCESS_MANAGER_AUTO_START="true"
 ./openlist-desktop-service
 ```
 
@@ -78,15 +159,29 @@ Authorization: your-api-key
 Authorization: Bearer your-api-key
 ```
 
-### Available Endpoints
+### Process Management Endpoints
 
-| Method | Endpoint          | Auth Required | Description             |
-| ------ | ----------------- | ------------- | ----------------------- |
-| GET    | `/health`         | No            | Health check            |
-| GET    | `/api/v1/status`  | Yes           | Get service status      |
-| GET    | `/api/v1/version` | Yes           | Get version information |
-| POST   | `/api/v1/start`   | Yes           | Start core application  |
-| POST   | `/api/v1/stop`    | Yes           | Stop core application   |
+| Method | Endpoint                            | Description                     |
+| ------ | ----------------------------------- | ------------------------------- |
+| GET    | `/health`                           | Health check (no auth)          |
+| GET    | `/api/v1/status`                    | Get service status              |
+| GET    | `/api/v1/version`                   | Get version information         |
+| GET    | `/api/v1/processes`                 | List all processes              |
+| POST   | `/api/v1/processes`                 | Create new process              |
+| GET    | `/api/v1/processes/:id`             | Get process details             |
+| PUT    | `/api/v1/processes/:id`             | Update process configuration    |
+| DELETE | `/api/v1/processes/:id`             | Delete process                  |
+| POST   | `/api/v1/processes/:id/start`       | Start process                   |
+| POST   | `/api/v1/processes/:id/stop`        | Stop process                    |
+| GET    | `/api/v1/processes/:id/logs`        | Get process logs                |
+
+### Legacy Endpoints (Backward Compatibility)
+
+| Method | Endpoint          | Description                     |
+| ------ | ----------------- | ------------------------------- |
+| POST   | `/api/v1/start`   | Start legacy process            |
+| POST   | `/api/v1/stop`    | Stop all processes              |
+| POST   | `/api/v1/shutdown`| Shutdown entire service         |
 
 ### Usage Examples
 
@@ -96,26 +191,135 @@ Authorization: Bearer your-api-key
 curl http://127.0.0.1:53211/health
 ```
 
-**Get Status:**
+**List All Processes:**
 
 ```bash
-curl -H "Authorization: your-api-key" http://127.0.0.1:53211/api/v1/status
+curl -H "Authorization: your-api-key" http://127.0.0.1:53211/api/v1/processes
 ```
 
-**Start Core Application:**
+**Create New Process:**
 
 ```bash
 curl -X POST -H "Authorization: your-api-key" \
      -H "Content-Type: application/json" \
-     -d '{"bin_path":"/path/to/binary","log_file":"/path/to/log"}' \
-     http://127.0.0.1:53211/api/v1/start
+     -d '{
+       "name": "My App",
+       "bin_path": "/path/to/binary",
+       "args": ["--port", "8080", "--verbose"],
+       "log_file": "/path/to/app.log",
+       "working_dir": "/path/to/workdir",
+       "auto_restart": false,
+       "run_as_admin": true
+     }' \
+     http://127.0.0.1:53211/api/v1/processes
 ```
 
-**Stop Core Application:**
+**Start Process:**
 
 ```bash
 curl -X POST -H "Authorization: your-api-key" \
-     http://127.0.0.1:53211/api/v1/stop
+     http://127.0.0.1:53211/api/v1/processes/{process-id}/start
+```
+
+**Stop Process:**
+
+```bash
+curl -X POST -H "Authorization: your-api-key" \
+     http://127.0.0.1:53211/api/v1/processes/{process-id}/stop
+```
+
+**Get Process Logs:**
+
+```bash
+# Get last 50 lines
+curl -H "Authorization: your-api-key" \
+     "http://127.0.0.1:53211/api/v1/processes/{process-id}/logs?lines=50"
+```
+
+**Update Process Configuration:**
+
+```bash
+curl -X PUT -H "Authorization: your-api-key" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "name": "Updated App Name",
+       "args": ["--port", "9090"],
+       "run_as_admin": false
+     }' \
+     http://127.0.0.1:53211/api/v1/processes/{process-id}
+```
+
+### Process Configuration
+
+When creating or updating a process, you can specify:
+
+- `name`: Display name for the process
+- `bin_path`: Path to the executable binary
+- `args`: Array of command-line arguments
+- `log_file`: Path to log file (optional, auto-generated if not provided)
+- `working_dir`: Working directory for the process (optional)
+- `env_vars`: Environment variables as key-value pairs (optional)
+- `auto_restart`: Whether to automatically restart on failure (optional)
+- `run_as_admin`: Whether to run with administrator/root privileges (optional)
+
+### Administrator/Root Privileges
+
+The service supports running processes with elevated privileges:
+
+- **Windows**: Uses PowerShell's `Start-Process -Verb RunAs` to launch processes with administrator privileges
+- **Linux**: Uses `sudo` to run processes as root (requires sudo to be available)
+- **macOS**: Uses `sudo` to run processes with administrator privileges (requires sudo to be available)
+
+**Important Security Notes:**
+
+- The service itself must be running with sufficient privileges to escalate process privileges
+- On Windows, UAC prompts may appear unless the service is running as an administrator
+- On Linux/macOS, the user running the service must have sudo privileges without password prompts for seamless operation
+- Use `run_as_admin: true` carefully and only when necessary
+
+### Response Format
+
+All API responses follow this format:
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "error": null,
+  "timestamp": 1640995200
+}
+```
+
+### Process Status Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid-here",
+    "name": "My App",
+    "is_running": true,
+    "pid": 12345,
+    "started_at": 1640995200,
+    "restart_count": 0,
+    "last_exit_code": null,
+    "config": {
+      "id": "uuid-here",
+      "name": "My App",
+      "bin_path": "/path/to/binary",
+      "args": ["--port", "8080"],
+      "log_file": "/path/to/app.log",
+      "working_dir": "/path/to/workdir",
+      "env_vars": {},
+      "auto_restart": false,
+      "run_as_admin": true,
+      "created_at": 1640995100,
+      "updated_at": 1640995100
+    }
+  },
+  "error": null,
+  "timestamp": 1640995300
+}
 ```
 
 ## Building
