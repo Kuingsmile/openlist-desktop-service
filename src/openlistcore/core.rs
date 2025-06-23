@@ -54,6 +54,11 @@ pub fn get_config_file_path() -> Result<PathBuf> {
     Ok(config_dir.join(CONFIG_FILE_NAME))
 }
 
+pub fn get_service_log_file_path() -> Result<PathBuf> {
+    let config_dir = get_config_dir()?;
+    Ok(config_dir.join("openlist-desktop-service.log"))
+}
+
 fn get_current_timestamp() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)

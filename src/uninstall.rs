@@ -33,11 +33,31 @@ mod constants {
             home
         )
     }
+
+    pub fn get_service_config_dir() -> String {
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/Users/unknown".to_string());
+        format!(
+            "{}/Library/Application Support/openlist-service-config",
+            home
+        )
+    }
 }
 
 #[cfg(target_os = "linux")]
 mod constants {
     pub const SERVICE_NAME: &str = "openlist-desktop-service";
+
+    pub fn get_service_config_dir() -> std::path::PathBuf {
+        use std::env;
+        if let Ok(xdg_config) = env::var("XDG_CONFIG_HOME") {
+            std::path::PathBuf::from(xdg_config).join("openlist-service-config")
+        } else {
+            let home = env::var("HOME").unwrap_or_else(|_| "/home/unknown".to_string());
+            std::path::PathBuf::from(home)
+                .join(".config")
+                .join("openlist-service-config")
+        }
+    }
 }
 
 #[cfg(windows)]
@@ -90,10 +110,13 @@ fn main() -> Result<()> {
 
     run_service_command("launchctl", &["stop", SERVICE_ID], "Stopping service");
     run_service_command("launchctl", &["unload", &plist_path], "Unloading service");
-
     remove_path_if_exists(&plist_path, "plist file", false)?;
     remove_path_if_exists(&bundle_path, "bundle directory", true)?;
     remove_path_if_exists(&config_path, "install config file", false)?;
+
+    // Clean up service config directory (contains process_configs.json and service logs)
+    let service_config_dir = get_service_config_dir();
+    remove_path_if_exists(&service_config_dir, "service config directory", true)?;
 
     let config_dir = std::path::Path::new(&config_path).parent();
     if let Some(dir) = config_dir {
@@ -109,7 +132,6 @@ fn main() -> Result<()> {
     use constants::SERVICE_NAME;
 
     println!("Starting Linux service uninstallation...");
-
     match openlist_desktop_service::utils::detect_linux_init_system() {
         "openrc" => {
             println!("Detected OpenRC init system");
@@ -119,6 +141,27 @@ fn main() -> Result<()> {
             println!("Detected systemd init system");
             uninstall_systemd_service(SERVICE_NAME)?;
         }
+    }
+
+    // Clean up service config directory (contains process_configs.json and service logs)
+    let service_config_dir = constants::get_service_config_dir();
+    if service_config_dir.exists() {
+        match std::fs::remove_dir_all(&service_config_dir) {
+            Ok(_) => println!(
+                "Removed service config directory: {}",
+                service_config_dir.display()
+            ),
+            Err(e) => eprintln!(
+                "Warning: Failed to remove service config directory {}: {}",
+                service_config_dir.display(),
+                e
+            ),
+        }
+    } else {
+        println!(
+            "Service config directory not found: {}",
+            service_config_dir.display()
+        );
     }
 
     println!("Linux service uninstallation completed successfully.");
@@ -237,14 +280,44 @@ fn main() -> windows_service::Result<()> {
     } else {
         println!("Service was already stopped.");
     }
-
     println!("Removing service...");
     service.delete().map_err(|e| {
         eprintln!("Failed to delete service: {}", e);
         e
     })?;
 
+    cleanup_config_files();
+
     println!("Windows service uninstallation completed successfully.");
     println!("Note: Any resource cleanup warnings can be safely ignored.");
+
     Ok(())
+}
+
+#[cfg(windows)]
+fn get_config_dir() -> std::path::PathBuf {
+    use std::env;
+    if let Ok(programdata) = env::var("PROGRAMDATA") {
+        std::path::PathBuf::from(programdata).join("openlist-service-config")
+    } else {
+        std::path::PathBuf::from("C:\\ProgramData\\openlist-service-config")
+    }
+}
+
+#[cfg(windows)]
+fn cleanup_config_files() {
+    let config_dir = get_config_dir();
+
+    if config_dir.exists() {
+        match std::fs::remove_dir_all(&config_dir) {
+            Ok(_) => println!("Removed config directory: {}", config_dir.display()),
+            Err(e) => eprintln!(
+                "Warning: Failed to remove config directory {}: {}",
+                config_dir.display(),
+                e
+            ),
+        }
+    } else {
+        println!("Config directory not found: {}", config_dir.display());
+    }
 }
