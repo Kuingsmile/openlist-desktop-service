@@ -231,6 +231,16 @@ pub fn spawn_process_with_privileges(
 #[cfg(target_os = "windows")]
 pub fn kill_process(pid: u32) -> io::Result<()> {
     info!("Attempting to terminate process PID {}", pid);
+    if Command::new("tasklist")
+        .args(&["/FI", &format!("PID eq {}", pid)])
+        .output()
+        .map_or(false, |output| {
+            output.status.success() && !output.stdout.is_empty()
+        })
+    {
+        info!("Process PID {} does not exist, skipping termination", pid);
+        return Ok(());
+    }
 
     let taskkill_args = &["/F", "/PID", &pid.to_string()];
 
@@ -261,6 +271,15 @@ pub fn kill_process(pid: u32) -> io::Result<()> {
         "Attempting to send SIGINT (kill -2) signal to process PID {}",
         pid
     );
+
+    // Check if the process exists
+    let check_process = Command::new("ps")
+        .args(&["-p", &pid.to_string()])
+        .output()?;
+    if !check_process.status.success() {
+        info!("Process PID {} does not exist, skipping termination", pid);
+        return Ok(());
+    }
 
     // SIGINT
     let kill_int_args = &["-2", &pid.to_string()];
