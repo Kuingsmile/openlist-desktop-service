@@ -92,9 +92,6 @@ pub fn spawn_process_with_privileges(
     {
         if run_as_admin {
             info!("Running process with administrator privileges on Windows");
-            // On Windows, we need to use runas or start the process elevated
-            // We'll use PowerShell's Start-Process with -Verb RunAs
-
             let escaped_args = args
                 .iter()
                 .map(|arg| format!("'{}'", arg.replace("'", "''")))
@@ -103,32 +100,69 @@ pub fn spawn_process_with_privileges(
 
             let ps_command = if args.is_empty() {
                 format!(
-                    "Start-Process -FilePath '{}' -Verb RunAs -WindowStyle Hidden",
+                    "$process = Start-Process -FilePath '{}' -Verb RunAs -WindowStyle Hidden -PassThru; $process.Id",
                     command
                 )
             } else {
                 format!(
-                    "Start-Process -FilePath '{}' -ArgumentList @({}) -Verb RunAs -WindowStyle Hidden",
+                    "$process = Start-Process -FilePath '{}' -ArgumentList @({}) -Verb RunAs -WindowStyle Hidden -PassThru; $process.Id",
                     command, escaped_args
                 )
             };
 
-            let child = Command::new("powershell")
+            let output = Command::new("powershell")
                 .args(["-Command", &ps_command])
                 .current_dir(working_dir)
-                .stdout(Stdio::from(log))
-                .stderr(Stdio::from(log_for_stderr))
-                .spawn()?;
+                .output()?;
 
-            let pid = child.id();
-            info!(
-                "Child process started successfully with admin privileges, PID: {}, working dir: {}",
-                pid,
-                working_dir.display()
-            );
+            if output.status.success() {
+                let pid_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                match pid_str.parse::<u32>() {
+                    Ok(pid) => {
+                        info!(
+                            "Child process started successfully with admin privileges, PID: {}, working dir: {}",
+                            pid,
+                            working_dir.display()
+                        );
 
-            Ok(pid)
+                        let _ = writeln!(
+                            log,
+                            "Process started with elevated privileges, PID: {}",
+                            pid
+                        );
+                        log.flush()?;
+
+                        Ok(pid)
+                    }
+                    Err(e) => {
+                        error!(
+                            "Failed to parse PID from PowerShell output '{}': {}",
+                            pid_str, e
+                        );
+                        let _ = writeln!(log, "Failed to parse PID from PowerShell output: {}", e);
+                        log.flush()?;
+                        Err(io::Error::new(
+                            io::ErrorKind::Other,
+                            format!("Failed to parse PID: {}", e),
+                        ))
+                    }
+                }
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                error!("Failed to start process with admin privileges: {}", stderr);
+                let _ = writeln!(
+                    log,
+                    "Failed to start process with admin privileges: {}",
+                    stderr
+                );
+                log.flush()?;
+                Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    format!("Failed to start elevated process: {}", stderr),
+                ))
+            }
         } else {
+            info!("Running process without administrator privileges on Windows");
             let child = Command::new(command)
                 .args(args)
                 .current_dir(working_dir)
@@ -146,7 +180,6 @@ pub fn spawn_process_with_privileges(
             Ok(pid)
         }
     }
-
     #[cfg(target_os = "linux")]
     {
         let mut command_to_run = command.to_string();
@@ -160,12 +193,13 @@ pub fn spawn_process_with_privileges(
                 .output()
                 .map_or(false, |o| o.status.success())
             {
-                // Prepend sudo to the command
                 args_to_run.insert(0, command);
                 command_to_run = "sudo".to_string();
             } else {
                 warn!("sudo not available, running without elevated privileges");
             }
+        } else {
+            info!("Running process without elevated privileges on Linux");
         }
 
         let child = Command::new(&command_to_run)
@@ -184,7 +218,6 @@ pub fn spawn_process_with_privileges(
 
         Ok(pid)
     }
-
     #[cfg(target_os = "macos")]
     {
         let mut command_to_run = command.to_string();
@@ -198,12 +231,13 @@ pub fn spawn_process_with_privileges(
                 .output()
                 .map_or(false, |o| o.status.success())
             {
-                // Prepend sudo to the command
                 args_to_run.insert(0, command);
                 command_to_run = "sudo".to_string();
             } else {
                 warn!("sudo not available, running without elevated privileges");
             }
+        } else {
+            info!("Running process without elevated privileges on macOS");
         }
 
         let child = Command::new(&command_to_run)
@@ -230,37 +264,49 @@ pub fn spawn_process_with_privileges(
 
 #[cfg(target_os = "windows")]
 pub fn kill_process(pid: u32) -> io::Result<()> {
-    info!("Attempting to terminate process PID {}", pid);
-    if Command::new("tasklist")
+    info!(
+        "Attempting to terminate process PID {} with administrator privileges",
+        pid
+    );
+    let check_output = Command::new("tasklist")
         .args(&["/FI", &format!("PID eq {}", pid)])
-        .output()
-        .map_or(false, |output| {
-            output.status.success() && !output.stdout.is_empty()
-        })
-    {
+        .output()?;
+
+    if !check_output.status.success() {
         info!("Process PID {} does not exist, skipping termination", pid);
         return Ok(());
     }
 
-    let taskkill_args = &["/F", "/PID", &pid.to_string()];
+    let output_str = String::from_utf8_lossy(&check_output.stdout);
+    if !output_str.contains(&pid.to_string()) {
+        info!("Process PID {} does not exist, skipping termination", pid);
+        return Ok(());
+    }
 
-    let output = Command::new("taskkill").args(taskkill_args).output()?;
+    let ps_command = format!(
+        "Start-Process -FilePath 'taskkill' -ArgumentList @('/F', '/PID', '{}') -Verb RunAs -WindowStyle Hidden -Wait",
+        pid
+    );
 
-    let stderr = if !output.stderr.is_empty() {
-        let (cow, _encoding_used, _had_errors) = encoding_rs::GBK.decode(&output.stderr);
-        cow.into_owned()
-    } else {
-        String::from("")
-    };
+    let output = Command::new("powershell")
+        .args(["-Command", &ps_command])
+        .output()?;
+    info!("output: {:?}", output);
 
     if output.status.success() {
-        info!("Successfully terminated process PID {}", pid);
+        info!(
+            "Successfully terminated process PID {} with administrator privileges",
+            pid
+        );
         Ok(())
     } else {
-        error!("Failed to terminate process PID {}: {}", pid, stderr.trim());
+        error!(
+            "Failed to terminate process PID {} with administrator privileges:",
+            pid
+        );
         Err(io::Error::other(format!(
-            "Process termination failed: {}",
-            stderr.trim()
+            "Process termination with admin privileges failed: {}",
+            pid
         )))
     }
 }
@@ -268,11 +314,10 @@ pub fn kill_process(pid: u32) -> io::Result<()> {
 #[cfg(not(target_os = "windows"))]
 pub fn kill_process(pid: u32) -> io::Result<()> {
     info!(
-        "Attempting to send SIGINT (kill -2) signal to process PID {}",
+        "Attempting to terminate process PID {} with elevated privileges",
         pid
     );
 
-    // Check if the process exists
     let check_process = Command::new("ps")
         .args(&["-p", &pid.to_string()])
         .output()?;
@@ -281,12 +326,18 @@ pub fn kill_process(pid: u32) -> io::Result<()> {
         return Ok(());
     }
 
-    // SIGINT
+    info!("Sending SIGINT signal to process PID {} with sudo", pid);
     let kill_int_args = &["-2", &pid.to_string()];
-    let output = Command::new("kill").args(kill_int_args).output()?;
+    let output = Command::new("sudo")
+        .arg("kill")
+        .args(kill_int_args)
+        .output()?;
 
     if output.status.success() {
-        info!("Successfully sent SIGINT signal to process PID {}", pid);
+        info!(
+            "Successfully sent SIGINT signal to process PID {} with sudo",
+            pid
+        );
         std::thread::sleep(std::time::Duration::from_millis(1000));
 
         let check_process = Command::new("ps")
@@ -298,19 +349,22 @@ pub fn kill_process(pid: u32) -> io::Result<()> {
         }
 
         warn!(
-            "Process {} did not terminate after receiving SIGINT, attempting to send SIGKILL",
+            "Process {} did not terminate after receiving SIGINT, attempting to send SIGKILL with sudo",
             pid
         );
     } else {
         warn!(
-            "Failed to send SIGINT to process PID {}, attempting to send SIGKILL",
+            "Failed to send SIGINT to process PID {} with sudo, attempting to send SIGKILL with sudo",
             pid
         );
     }
 
-    // SIGKILL
+    info!("Sending SIGKILL signal to process PID {} with sudo", pid);
     let kill_kill_args = &["-9", &pid.to_string()];
-    let output = Command::new("kill").args(kill_kill_args).output()?;
+    let output = Command::new("sudo")
+        .arg("kill")
+        .args(kill_kill_args)
+        .output()?;
 
     let stderr = if !output.stderr.is_empty() {
         String::from_utf8_lossy(&output.stderr).to_string()
@@ -319,16 +373,19 @@ pub fn kill_process(pid: u32) -> io::Result<()> {
     };
 
     if output.status.success() {
-        info!("Successfully terminated process PID {} using SIGKILL", pid);
+        info!(
+            "Successfully terminated process PID {} using SIGKILL with sudo",
+            pid
+        );
         Ok(())
     } else {
         error!(
-            "Failed to terminate process PID {} using SIGKILL: {}",
+            "Failed to terminate process PID {} using SIGKILL with sudo: {}",
             pid,
             stderr.trim()
         );
         Err(io::Error::other(format!(
-            "Kill command failed: {}",
+            "Kill command with sudo failed: {}",
             stderr.trim()
         )))
     }
