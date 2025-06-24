@@ -314,7 +314,7 @@ async fn stop_service() -> impl IntoResponse {
 
     {
         let mut core_manager = CORE_MANAGER.lock();
-        if let Err(err) = core_manager.shutdown_openlist() {
+        if let Err(err) = core_manager.shutdown_all_processes() {
             warn!("Failed to gracefully stop core application: {}", err);
         }
     }

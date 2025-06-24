@@ -6,6 +6,20 @@ fn main() {
 #[cfg(unix)]
 use anyhow::Result;
 
+use openlist_desktop_service::openlistcore::core::CORE_MANAGER;
+
+fn stop_all_processes() {
+    println!("Stopping all managed processes...");
+    let mut core_manager = CORE_MANAGER.lock();
+    match core_manager.shutdown_all_processes() {
+        Ok(_) => println!("All managed processes stopped successfully."),
+        Err(e) => {
+            eprintln!("Warning: Failed to stop some processes: {}", e);
+            println!("Continuing with uninstallation...");
+        }
+    }
+}
+
 #[cfg(target_os = "macos")]
 mod constants {
     pub const SERVICE_ID: &str = "io.github.openlistteam.openlist.service";
@@ -102,6 +116,8 @@ fn main() -> Result<()> {
 
     println!("Starting macOS service uninstallation...");
 
+    stop_all_processes();
+
     let _ = uninstall_old_service();
 
     let plist_path = get_user_plist_path();
@@ -132,6 +148,9 @@ fn main() -> Result<()> {
     use constants::SERVICE_NAME;
 
     println!("Starting Linux service uninstallation...");
+
+    stop_all_processes();
+
     match openlist_desktop_service::utils::detect_linux_init_system() {
         "openrc" => {
             println!("Detected OpenRC init system");
@@ -220,6 +239,8 @@ fn main() -> windows_service::Result<()> {
     };
 
     println!("Starting Windows service uninstallation...");
+
+    stop_all_processes();
 
     let manager_access = ServiceManagerAccess::CONNECT;
     let service_manager =

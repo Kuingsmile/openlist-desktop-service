@@ -1,4 +1,4 @@
-mod core;
+pub mod core;
 mod data;
 mod http_api;
 mod process;

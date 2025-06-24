@@ -543,7 +543,7 @@ impl CoreManager {
         Ok(())
     }
 
-    pub fn shutdown_openlist(&mut self) -> Result<()> {
+    pub fn shutdown_all_processes(&mut self) -> Result<()> {
         let process_ids: Vec<String> = {
             let process_manager = self.process_manager.inner.lock();
             let processes = process_manager.processes.lock();
@@ -558,6 +558,7 @@ impl CoreManager {
 
         Ok(())
     }
+
     pub fn get_openlist_status(&self) -> Result<serde_json::Value> {
         let processes = self.list_processes()?;
         Ok(serde_json::json!({
