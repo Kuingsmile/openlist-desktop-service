@@ -359,7 +359,7 @@ fn main() -> windows_service::Result<()> {
     let manager_access = ServiceManagerAccess::CONNECT;
     let service_manager =
         ServiceManager::local_computer(None::<&str>, manager_access).map_err(|e| {
-            eprintln!("Failed to connect to service manager: {}", e);
+            eprintln!("Failed to connect to service manager: {e}");
             e
         })?;
 

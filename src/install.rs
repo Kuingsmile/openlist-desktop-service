@@ -368,7 +368,7 @@ mod linux {
         run_command("systemctl", &["daemon-reload"])
             .map_err(|e| anyhow::anyhow!("Failed to reload systemd daemon: {}", e))?;
 
-        println!("Enabling and starting systemd service: {}", SERVICE_NAME);
+        println!("Enabling and starting systemd service: {SERVICE_NAME}");
         run_command("systemctl", &["enable", SERVICE_NAME, "--now"]).map_err(|e| {
             anyhow::anyhow!(
                 "Failed to enable and start systemd service {}: {}",
@@ -395,7 +395,7 @@ mod linux {
         println!("Checking OpenRC service status for {SERVICE_NAME}");
 
         let status_output = std::process::Command::new("rc-service")
-            .args(&[SERVICE_NAME, "status"])
+            .args([SERVICE_NAME, "status"])
             .output()
             .map_err(|e| anyhow::anyhow!("Failed to check OpenRC service status: {}", e))?;
 
