@@ -37,18 +37,12 @@ mod macos {
 
     fn get_user_bundle_path() -> String {
         let home = std::env::var("HOME").unwrap_or_else(|_| "/Users/unknown".to_string());
-        format!(
-            "{}/Library/Application Support/io.github.openlistteam.openlist.service.bundle",
-            home
-        )
+        format!("{home}/Library/Application Support/io.github.openlistteam.openlist.service.bundle")
     }
 
     fn get_user_plist_path() -> String {
         let home = std::env::var("HOME").unwrap_or_else(|_| "/Users/unknown".to_string());
-        format!(
-            "{}/Library/LaunchAgents/io.github.openlistteam.openlist.service.plist",
-            home
-        )
+        format!("{home}/Library/LaunchAgents/io.github.openlistteam.openlist.service.plist")
     }
 
     struct ServicePaths {
@@ -61,12 +55,11 @@ mod macos {
         fn new() -> Self {
             let bundle_path = get_user_bundle_path();
             Self {
-                macos_path: format!("{}/Contents/MacOS", bundle_path),
+                macos_path: format!("{bundle_path}/Contents/MacOS"),
                 target_binary_path: format!(
-                    "{}/Contents/MacOS/openlist-desktop-service",
-                    bundle_path
+                    "{bundle_path}/Contents/MacOS/openlist-desktop-service"
                 ),
-                info_plist_path: format!("{}/Contents/Info.plist", bundle_path),
+                info_plist_path: format!("{bundle_path}/Contents/Info.plist"),
                 bundle_path,
             }
         }

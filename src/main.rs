@@ -54,8 +54,7 @@ fn setup_log_file() -> Result<(), Box<dyn std::error::Error>> {
                 {
                     if log4rs::init_config(config).is_ok() {
                         info!(
-                            "Rolling log file configured: {:?} (max size: 10MB, keep: 3 files)",
-                            log_path
+                            "Rolling log file configured: {log_path:?} (max size: 10MB, keep: 3 files)"
                         );
                         return Ok(());
                     }
@@ -70,13 +69,13 @@ fn setup_log_file() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(windows)]
 fn main() -> windows_service::Result<()> {
     let _ = setup_log_file();
-    info!("Starting {}", SERVICE_NAME);
+    info!("Starting {SERVICE_NAME}");
     openlistcore::main()
 }
 
 #[cfg(not(windows))]
 fn main() {
     let _ = setup_log_file();
-    info!("Starting {}", SERVICE_NAME);
+    info!("Starting {SERVICE_NAME}");
     openlistcore::main();
 }
