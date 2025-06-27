@@ -562,10 +562,7 @@ mod windows {
                 service.start(&Vec::<&OsStr>::new())
             }
             Err(e) => {
-                println!(
-                    "Failed to query service status: {:?}, attempting to start anyway",
-                    e
-                );
+                println!("Failed to query service status: {e:?}, attempting to start anyway");
                 let _ = service.start(&Vec::<&OsStr>::new());
                 Ok(())
             }
@@ -589,10 +586,7 @@ mod windows {
             account_password: None,
         };
 
-        println!(
-            "Creating service with configuration: {}",
-            SERVICE_DISPLAY_NAME
-        );
+        println!("Creating service with configuration: {SERVICE_DISPLAY_NAME}");
 
         let create_access =
             ServiceAccess::CHANGE_CONFIG | ServiceAccess::START | ServiceAccess::QUERY_STATUS;
@@ -601,7 +595,7 @@ mod windows {
         println!("Service created successfully");
 
         if let Err(e) = service.set_description(SERVICE_DESCRIPTION) {
-            println!("Warning: Failed to set service description: {:?}", e);
+            println!("Warning: Failed to set service description: {e:?}");
         }
 
         println!("Starting service...");
