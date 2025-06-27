@@ -278,7 +278,7 @@ fn print_output_section(title: &str, output: &str, color: &str, use_colors: bool
         if use_colors {
             eprintln!("{color}{COLOR_BOLD}│ {line_num} │ {COLOR_RESET}{line}{color}");
         } else {
-            eprintln!("│ {line_num} │ line{}");
+            eprintln!("│ {line_num} │ {line}");
         }
     }
 

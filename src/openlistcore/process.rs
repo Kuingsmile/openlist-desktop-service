@@ -12,7 +12,7 @@ pub fn is_process_running(pid: i32) -> bool {
         return false;
     }
     let check_output = Command::new("tasklist")
-        .args(["/FI", &format!("PID eq {}", pid)])
+        .args(["/FI", &format!("PID eq {pid}")])
         .output();
 
     match check_output {
@@ -58,10 +58,7 @@ pub fn ensure_executable_permissions(binary_path: &str) -> io::Result<()> {
     let current_mode = permissions.mode();
 
     if current_mode & 0o100 == 0 {
-        info!(
-            "Binary {} does not have execute permissions, adding them",
-            binary_path
-        );
+        info!("Binary {binary_path} does not have execute permissions, adding them");
 
         let new_mode = current_mode | 0o755;
         let mut new_permissions = permissions;
@@ -160,37 +157,29 @@ pub fn spawn_process_with_privileges(
                             working_dir.display()
                         );
 
-                        let _ = writeln!(
-                            log,
-                            "Process started with elevated privileges, PID: {}",
-                            pid
-                        );
+                        let _ =
+                            writeln!(log, "Process started with elevated privileges, PID: {pid}");
                         log.flush()?;
 
                         Ok(pid)
                     }
                     Err(e) => {
-                        error!(
-                            "Failed to parse PID from PowerShell output '{}': {}",
-                            pid_str, e
-                        );
-                        let _ = writeln!(log, "Failed to parse PID from PowerShell output: {}", e);
+                        error!("Failed to parse PID from PowerShell output '{pid_str}': {e}");
+                        let _ = writeln!(log, "Failed to parse PID from PowerShell output: {e}");
                         log.flush()?;
-                        Err(io::Error::other(format!("Failed to parse PID: {}", e)))
+                        Err(io::Error::other(format!("Failed to parse PID: {e}")))
                     }
                 }
             } else {
                 let stderr = String::from_utf8_lossy(&output.stderr);
-                error!("Failed to start process with admin privileges: {}", stderr);
+                error!("Failed to start process with admin privileges: {stderr}");
                 let _ = writeln!(
                     log,
-                    "Failed to start process with admin privileges: {}",
-                    stderr
+                    "Failed to start process with admin privileges: {stderr}"
                 );
                 log.flush()?;
                 Err(io::Error::other(format!(
-                    "Failed to start elevated process: {}",
-                    stderr
+                    "Failed to start elevated process: {stderr}"
                 )))
             }
         } else {
@@ -300,29 +289,28 @@ pub fn kill_process(pid: u32) -> io::Result<()> {
         pid
     );
     let check_output = Command::new("tasklist")
-        .args(["/FI", &format!("PID eq {}", pid)])
+        .args(["/FI", &format!("PID eq {pid}")])
         .output()?;
 
     if !check_output.status.success() {
-        info!("Process PID {} does not exist, skipping termination", pid);
+        info!("Process PID {pid} does not exist, skipping termination");
         return Ok(());
     }
 
     let output_str = String::from_utf8_lossy(&check_output.stdout);
     if !output_str.contains(&pid.to_string()) {
-        info!("Process PID {} does not exist, skipping termination", pid);
+        info!("Process PID {pid} does not exist, skipping termination");
         return Ok(());
     }
 
     let ps_command = format!(
-        "Start-Process -FilePath 'taskkill' -ArgumentList @('/F', '/PID', '{}') -Verb RunAs -WindowStyle Hidden -Wait",
-        pid
+        "Start-Process -FilePath 'taskkill' -ArgumentList @('/F', '/PID', '{pid}') -Verb RunAs -WindowStyle Hidden -Wait"
     );
 
     let output = Command::new("powershell")
         .args(["-Command", &ps_command])
         .output()?;
-    info!("output: {:?}", output);
+    info!("output: {output:?}");
 
     if output.status.success() {
         info!("Successfully terminated process PID {pid} with administrator privileges");
@@ -337,10 +325,7 @@ pub fn kill_process(pid: u32) -> io::Result<()> {
 
 #[cfg(not(target_os = "windows"))]
 pub fn kill_process(pid: u32) -> io::Result<()> {
-    info!(
-        "Attempting to terminate process PID {} with elevated privileges",
-        pid
-    );
+    info!("Attempting to terminate process PID {pid} with elevated privileges");
 
     let check_process = Command::new("ps")
         .args(&["-p", &pid.to_string()])

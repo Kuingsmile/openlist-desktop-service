@@ -34,7 +34,7 @@ async fn auto_start_core() {
     let mut core_manager = CORE_MANAGER.lock();
 
     if let Err(e) = core_manager.auto_start_processes() {
-        error!("Failed to auto-start processes: {}", e);
+        error!("Failed to auto-start processes: {e}");
     } else {
         info!("Auto-start completed successfully");
     }

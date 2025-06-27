@@ -100,7 +100,7 @@ impl CoreManager {
             }
             File::create(&config_path)
                 .with_context(|| format!("Failed to create config file: {config_path:?}"))?;
-            info!("Loading process configurations from {:?}", config_path);
+            info!("Loading process configurations from {config_path:?}");
             return Ok(());
         }
 
@@ -562,7 +562,7 @@ impl CoreManager {
 
         for id in process_ids {
             if let Err(e) = self.stop_process(&id) {
-                error!("Failed to stop process {}: {}", id, e);
+                error!("Failed to stop process {id}: {e}");
             }
         }
 

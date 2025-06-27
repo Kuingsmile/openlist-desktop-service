@@ -319,7 +319,7 @@ async fn stop_service_api() -> impl IntoResponse {
     {
         let mut core_manager = CORE_MANAGER.lock();
         if let Err(err) = core_manager.shutdown_all_processes() {
-            warn!("Failed to gracefully stop all processes: {}", err);
+            warn!("Failed to gracefully stop all processes: {err}");
         }
     }
 
@@ -400,7 +400,7 @@ pub async fn run_ipc_server() -> Result<()> {
 
     let app = create_router(app_state);
 
-    let addr = format!("{}:{}", host, port);
+    let addr = format!("{host}:{port}");
     let listener = tokio::net::TcpListener::bind(&addr)
         .await
         .with_context(|| format!("Failed to bind to {addr}"))?;
