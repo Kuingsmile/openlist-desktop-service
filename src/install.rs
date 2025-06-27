@@ -1,8 +1,6 @@
 use std::env;
 use std::path::PathBuf;
 
-use log::info;
-
 #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
 fn main() {
     panic!("This program is not intended to run on this platform.");
@@ -214,6 +212,7 @@ mod macos {
 mod linux {
     use super::*;
     use anyhow::Error;
+    use log::info;
     use openlist_desktop_service::utils::run_command;
     use std::path::Path;
 

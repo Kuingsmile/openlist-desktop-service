@@ -77,6 +77,12 @@ pub static CORE_MANAGER: Lazy<Mutex<CoreManager>> = Lazy::new(|| {
     Mutex::new(manager)
 });
 
+impl Default for CoreManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CoreManager {
     pub fn new() -> Self {
         CoreManager {
@@ -326,7 +332,7 @@ impl CoreManager {
                         let pid = runtime.running_pid.load(Ordering::Relaxed);
                         if pid > 0 { Some(pid as u32) } else { None }
                     },
-                    started_at: runtime.started_at.lock().clone(),
+                    started_at: *runtime.started_at.lock(),
                     restart_count: runtime.restart_count.load(Ordering::Relaxed) as u32,
                     last_exit_code: {
                         let code = runtime.last_exit_code.load(Ordering::Relaxed);
@@ -362,7 +368,7 @@ impl CoreManager {
                 let pid = runtime.running_pid.load(Ordering::Relaxed);
                 if pid > 0 { Some(pid as u32) } else { None }
             },
-            started_at: runtime.started_at.lock().clone(),
+            started_at: *runtime.started_at.lock(),
             restart_count: runtime.restart_count.load(Ordering::Relaxed) as u32,
             last_exit_code: {
                 let code = runtime.last_exit_code.load(Ordering::Relaxed);
@@ -503,11 +509,7 @@ impl CoreManager {
         let total_lines = all_lines.len();
         let lines_to_fetch = lines.unwrap_or(100).min(total_lines);
 
-        let start_index = if total_lines > lines_to_fetch {
-            total_lines - lines_to_fetch
-        } else {
-            0
-        };
+        let start_index = total_lines.saturating_sub(lines_to_fetch);
 
         let log_content = all_lines[start_index..].join("\n");
 

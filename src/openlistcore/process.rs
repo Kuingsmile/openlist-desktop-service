@@ -12,7 +12,7 @@ pub fn is_process_running(pid: i32) -> bool {
         return false;
     }
     let check_output = Command::new("tasklist")
-        .args(&["/FI", &format!("PID eq {}", pid)])
+        .args(["/FI", &format!("PID eq {}", pid)])
         .output();
 
     match check_output {
@@ -176,10 +176,7 @@ pub fn spawn_process_with_privileges(
                         );
                         let _ = writeln!(log, "Failed to parse PID from PowerShell output: {}", e);
                         log.flush()?;
-                        Err(io::Error::new(
-                            io::ErrorKind::Other,
-                            format!("Failed to parse PID: {}", e),
-                        ))
+                        Err(io::Error::other(format!("Failed to parse PID: {}", e)))
                     }
                 }
             } else {
@@ -191,10 +188,10 @@ pub fn spawn_process_with_privileges(
                     stderr
                 );
                 log.flush()?;
-                Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Failed to start elevated process: {}", stderr),
-                ))
+                Err(io::Error::other(format!(
+                    "Failed to start elevated process: {}",
+                    stderr
+                )))
             }
         } else {
             info!("Running process without administrator privileges on Windows");
@@ -303,7 +300,7 @@ pub fn kill_process(pid: u32) -> io::Result<()> {
         pid
     );
     let check_output = Command::new("tasklist")
-        .args(&["/FI", &format!("PID eq {}", pid)])
+        .args(["/FI", &format!("PID eq {}", pid)])
         .output()?;
 
     if !check_output.status.success() {

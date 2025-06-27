@@ -26,7 +26,7 @@ fn setup_log_file() -> Result<(), Box<dyn std::error::Error>> {
     ];
     for log_path in log_paths.iter().flatten() {
         if let Some(parent) = log_path.parent() {
-            if let Err(_) = std::fs::create_dir_all(parent) {
+            if std::fs::create_dir_all(parent).is_err() {
                 continue;
             }
         }
