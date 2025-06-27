@@ -132,13 +132,11 @@ pub fn spawn_process_with_privileges(
 
             let ps_command = if args.is_empty() {
                 format!(
-                    "$process = Start-Process -FilePath '{}' -Verb RunAs -WindowStyle Hidden -PassThru; $process.Id",
-                    command
+                    "$process = Start-Process -FilePath '{command}' -Verb RunAs -WindowStyle Hidden -PassThru; $process.Id"
                 )
             } else {
                 format!(
-                    "$process = Start-Process -FilePath '{}' -ArgumentList @({}) -Verb RunAs -WindowStyle Hidden -PassThru; $process.Id",
-                    command, escaped_args
+                    "$process = Start-Process -FilePath '{command}' -ArgumentList @({escaped_args}) -Verb RunAs -WindowStyle Hidden -PassThru; $process.Id"
                 )
             };
 
@@ -249,7 +247,7 @@ pub fn spawn_process_with_privileges(
             if Command::new("which")
                 .arg("sudo")
                 .output()
-                .map_or(false, |o| o.status.success())
+                .is_ok_and(|o| o.status.success())
             {
                 args_to_run.insert(0, command);
                 command_to_run = "sudo".to_string();
@@ -284,10 +282,7 @@ pub fn spawn_process_with_privileges(
 
 #[cfg(target_os = "windows")]
 pub fn kill_process(pid: u32) -> io::Result<()> {
-    info!(
-        "Attempting to terminate process PID {} with administrator privileges",
-        pid
-    );
+    info!("Attempting to terminate process PID {pid} with administrator privileges");
     let check_output = Command::new("tasklist")
         .args(["/FI", &format!("PID eq {pid}")])
         .output()?;
@@ -327,9 +322,7 @@ pub fn kill_process(pid: u32) -> io::Result<()> {
 pub fn kill_process(pid: u32) -> io::Result<()> {
     info!("Attempting to terminate process PID {pid} with elevated privileges");
 
-    let check_process = Command::new("ps")
-        .args(&["-p", &pid.to_string()])
-        .output()?;
+    let check_process = Command::new("ps").args(["-p", &pid.to_string()]).output()?;
     if !check_process.status.success() {
         info!("Process PID {pid} does not exist, skipping termination");
         return Ok(());
