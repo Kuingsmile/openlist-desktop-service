@@ -3,7 +3,7 @@ fn main() {
     panic!("This program is not intended to run on this platform.");
 }
 
-#[cfg(unix)]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 use anyhow::Result;
 
 use std::io::{Read, Write};
@@ -196,7 +196,7 @@ mod constants {
     pub const SERVICE_NAME: &str = "openlist_desktop_service";
 }
 
-#[cfg(unix)]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn remove_path_if_exists(path: &str, description: &str, is_dir: bool) -> Result<()> {
     use std::path::Path;
 
@@ -216,7 +216,7 @@ fn remove_path_if_exists(path: &str, description: &str, is_dir: bool) -> Result<
     Ok(())
 }
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn run_service_command(program: &str, args: &[&str], description: &str) {
     use openlist_desktop_service::utils::run_command;
 
@@ -316,7 +316,7 @@ fn uninstall_systemd_service(service_name: &str) -> Result<()> {
         "Disabling systemd service",
     );
 
-    let unit_file = format!("/etc/systemd/system/{}", service_name_with_ext);
+    let unit_file = format!("/etc/systemd/system/{service_name_with_ext}");
     remove_path_if_exists(&unit_file, "systemd service file", false)?;
 
     run_service_command("systemctl", &["daemon-reload"], "Reloading systemd daemon");

@@ -28,7 +28,7 @@ pub fn is_process_running(pid: i32) -> bool {
     }
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 pub fn is_process_running(pid: i32) -> bool {
     if pid <= 0 {
         return false;
@@ -41,7 +41,7 @@ pub fn is_process_running(pid: i32) -> bool {
     }
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 pub fn ensure_executable_permissions(binary_path: &str) -> io::Result<()> {
     use std::os::unix::fs::PermissionsExt;
 
@@ -318,7 +318,7 @@ pub fn kill_process(pid: u32) -> io::Result<()> {
     }
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 pub fn kill_process(pid: u32) -> io::Result<()> {
     info!("Attempting to terminate process PID {pid} with elevated privileges");
 

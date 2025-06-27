@@ -1,31 +1,31 @@
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 use anyhow::Error;
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 use std::fmt::Write;
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 const COLOR_BLUE: &str = "\x1b[34m";
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 const COLOR_GREEN: &str = "\x1b[32m";
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 const COLOR_RED: &str = "\x1b[31m";
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 const COLOR_YELLOW: &str = "\x1b[33m";
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 const COLOR_CYAN: &str = "\x1b[36m";
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 const COLOR_RESET: &str = "\x1b[0m";
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 const COLOR_BOLD: &str = "\x1b[1m";
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn should_use_colors() -> bool {
     std::env::var("NO_COLOR").is_err()
         && std::env::var("CI").is_err()
         && std::env::var("TERM").unwrap_or_default() != "dumb"
 }
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 #[inline]
 fn get_timestamp() -> u64 {
     std::time::SystemTime::now()
@@ -34,13 +34,13 @@ fn get_timestamp() -> u64 {
         .unwrap_or(0)
 }
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 #[inline]
 fn format_duration_ms(duration: std::time::Duration) -> f64 {
     duration.as_secs_f64() * 1000.0
 }
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn print_box_header(title: &str, color: &str, use_colors: bool) {
     if use_colors {
         println!("\n{COLOR_BOLD}{color}╭─ {title} ─{COLOR_RESET}");
@@ -49,7 +49,7 @@ fn print_box_header(title: &str, color: &str, use_colors: bool) {
     }
 }
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn print_box_footer(color: &str, use_colors: bool) {
     if use_colors {
         println!("{color}{COLOR_BOLD}╰─────────────────────────────────────{COLOR_RESET}");
@@ -58,7 +58,7 @@ fn print_box_footer(color: &str, use_colors: bool) {
     }
 }
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn print_box_line(
     icon: &str,
     label: &str,
@@ -74,7 +74,7 @@ fn print_box_line(
     }
 }
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 pub fn run_command(cmd: &str, args: &[&str]) -> Result<(), Error> {
     let command_str = format_command(cmd, args);
 
@@ -95,7 +95,7 @@ pub fn run_command(cmd: &str, args: &[&str]) -> Result<(), Error> {
     }
 }
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 #[inline]
 fn format_command(cmd: &str, args: &[&str]) -> String {
     if args.is_empty() {
@@ -105,7 +105,7 @@ fn format_command(cmd: &str, args: &[&str]) -> String {
     }
 }
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn print_command_start(command_str: &str) {
     let timestamp = get_timestamp();
     let use_colors = should_use_colors();
@@ -130,7 +130,7 @@ fn print_command_start(command_str: &str) {
     print_box_footer(COLOR_BLUE, use_colors);
 }
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn print_command_success(command_str: &str, execution_time: std::time::Duration) {
     let timestamp = get_timestamp();
     let duration_ms = format_duration_ms(execution_time);
@@ -164,7 +164,7 @@ fn print_command_success(command_str: &str, execution_time: std::time::Duration)
     print_box_footer(COLOR_GREEN, use_colors);
 }
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn handle_command_failure(
     output: &std::process::Output,
     command_str: &str,
@@ -196,7 +196,7 @@ fn handle_command_failure(
     Err(anyhow::anyhow!(error_msg))
 }
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn print_command_failure_debug(
     command_str: &str,
     status: &std::process::ExitStatus,
@@ -265,7 +265,7 @@ fn print_command_failure_debug(
     }
 }
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn print_output_section(title: &str, output: &str, color: &str, use_colors: bool) {
     if use_colors {
         eprintln!("{color}{COLOR_BOLD}│ {title}:{COLOR_RESET}");
@@ -289,7 +289,7 @@ fn print_output_section(title: &str, output: &str, color: &str, use_colors: bool
     }
 }
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn print_debug_hints_section(status: &std::process::ExitStatus, stderr: &str, use_colors: bool) {
     if use_colors {
         eprintln!("{COLOR_YELLOW}{COLOR_BOLD}│ 💡 DEBUGGING HINTS:{COLOR_RESET}");
@@ -300,7 +300,7 @@ fn print_debug_hints_section(status: &std::process::ExitStatus, stderr: &str, us
     print_debug_hints(status, stderr, use_colors);
 }
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn print_debug_hints(status: &std::process::ExitStatus, stderr: &str, use_colors: bool) {
     let hint_prefix = if use_colors {
         format!("{COLOR_YELLOW}{COLOR_BOLD}│    • ")

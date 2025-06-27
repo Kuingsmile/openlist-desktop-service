@@ -333,7 +333,7 @@ async fn stop_service_api() -> impl IntoResponse {
             std::process::exit(1);
         }
 
-        #[cfg(not(target_os = "windows"))]
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
         if let Err(err) = crate::openlistcore::stop_service() {
             error!("Failed to stop service: {err}");
         }

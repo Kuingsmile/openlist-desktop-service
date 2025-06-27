@@ -73,7 +73,7 @@ fn main() -> windows_service::Result<()> {
     openlistcore::main()
 }
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn main() {
     let _ = setup_log_file();
     info!("Starting {SERVICE_NAME}");

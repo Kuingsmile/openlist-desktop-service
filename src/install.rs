@@ -249,7 +249,7 @@ mod linux {
     }
 
     pub fn install() -> Result<(), Error> {
-        println!("Starting Linux service installation for {}", SERVICE_NAME);
+        println!("Starting Linux service installation for {SERVICE_NAME}");
 
         let service_binary_path = get_service_binary_path()?;
         println!("Service binary found at: {}", service_binary_path.display());
@@ -304,10 +304,10 @@ mod linux {
     }
 
     fn check_systemd_service_status() -> Result<ServiceStatus, Error> {
-        println!("Checking systemd service status for {}", SERVICE_NAME);
+        println!("Checking systemd service status for {SERVICE_NAME}");
 
         let status_output = std::process::Command::new("systemctl")
-            .args(&["status", &format!("{}.service", SERVICE_NAME), "--no-pager"])
+            .args(["status", &format!("{SERVICE_NAME}.service"), "--no-pager"])
             .output()
             .map_err(|e| anyhow::anyhow!("Failed to execute systemctl status: {}", e))?;
 
@@ -321,22 +321,15 @@ mod linux {
             ServiceStatus::Failed => "failed",
             ServiceStatus::NotFound => "not found",
         };
-        info!(
-            "systemd service status: {} (exit code: {})",
-            status_description, exit_code
-        );
+        info!("systemd service status: {status_description} (exit code: {exit_code})");
 
         Ok(status)
     }
 
     fn start_existing_systemd_service() -> Result<(), Error> {
-        println!("Starting existing systemd service: {}", SERVICE_NAME);
+        println!("Starting existing systemd service: {SERVICE_NAME}");
 
-        run_command(
-            "systemctl",
-            &["start", &format!("{}.service", SERVICE_NAME)],
-        )
-        .map_err(|e| {
+        run_command("systemctl", &["start", &format!("{SERVICE_NAME}.service")]).map_err(|e| {
             anyhow::anyhow!(
                 "Failed to start existing systemd service {}: {}",
                 SERVICE_NAME,
@@ -346,8 +339,8 @@ mod linux {
     }
 
     fn create_systemd_service_unit_file(binary_path: &Path) -> Result<(), Error> {
-        let unit_file_path = format!("/etc/systemd/system/{}.service", SERVICE_NAME);
-        println!("Creating systemd service unit file at: {}", unit_file_path);
+        let unit_file_path = format!("/etc/systemd/system/{SERVICE_NAME}.service");
+        println!("Creating systemd service unit file at: {unit_file_path}");
 
         let binary_path_str = binary_path
             .to_str()
@@ -384,25 +377,22 @@ mod linux {
             )
         })?;
 
-        println!("systemd service {} has been enabled", SERVICE_NAME);
+        println!("systemd service {SERVICE_NAME} has been enabled");
 
         run_command("systemctl", &["start", SERVICE_NAME]).map_err(|e| {
             anyhow::anyhow!("Failed to start systemd service {}: {}", SERVICE_NAME, e)
         })?;
-        println!(
-            "systemd service {} has been started successfully",
-            SERVICE_NAME
-        );
+        println!("systemd service {SERVICE_NAME} has been started successfully");
         Ok(())
     }
 
     fn check_openrc_service_exists() -> Result<bool, Error> {
-        let script_path = format!("/etc/init.d/{}", SERVICE_NAME);
+        let script_path = format!("/etc/init.d/{SERVICE_NAME}");
         Ok(Path::new(&script_path).exists())
     }
 
     fn check_openrc_service_running() -> Result<bool, Error> {
-        println!("Checking OpenRC service status for {}", SERVICE_NAME);
+        println!("Checking OpenRC service status for {SERVICE_NAME}");
 
         let status_output = std::process::Command::new("rc-service")
             .args(&[SERVICE_NAME, "status"])
@@ -420,7 +410,7 @@ mod linux {
     }
 
     fn start_existing_openrc_service() -> Result<(), Error> {
-        println!("Starting existing OpenRC service: {}", SERVICE_NAME);
+        println!("Starting existing OpenRC service: {SERVICE_NAME}");
 
         run_command("rc-service", &[SERVICE_NAME, "start"]).map_err(|e| {
             anyhow::anyhow!(
@@ -432,8 +422,8 @@ mod linux {
     }
 
     fn create_openrc_service_script(binary_path: &Path) -> Result<(), Error> {
-        let script_path = format!("/etc/init.d/{}", SERVICE_NAME);
-        println!("Creating OpenRC service script at: {}", script_path);
+        let script_path = format!("/etc/init.d/{SERVICE_NAME}");
+        println!("Creating OpenRC service script at: {script_path}");
 
         let binary_path_str = binary_path
             .to_str()
@@ -463,21 +453,18 @@ mod linux {
     }
 
     fn install_and_start_openrc_service() -> Result<(), Error> {
-        println!("Adding OpenRC service {} to default runlevel", SERVICE_NAME);
+        println!("Adding OpenRC service {SERVICE_NAME} to default runlevel");
 
         run_command("rc-update", &["add", SERVICE_NAME, "default"]).map_err(|e| {
             anyhow::anyhow!("Failed to add OpenRC service to default runlevel: {}", e)
         })?;
 
-        println!("Starting OpenRC service: {}", SERVICE_NAME);
+        println!("Starting OpenRC service: {SERVICE_NAME}");
         run_command("rc-service", &[SERVICE_NAME, "start"]).map_err(|e| {
             anyhow::anyhow!("Failed to start OpenRC service {}: {}", SERVICE_NAME, e)
         })?;
 
-        println!(
-            "OpenRC service {} has been added to default runlevel and started",
-            SERVICE_NAME
-        );
+        println!("OpenRC service {SERVICE_NAME} has been added to default runlevel and started");
         Ok(())
     }
 }

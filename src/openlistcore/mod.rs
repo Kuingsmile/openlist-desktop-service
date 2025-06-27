@@ -131,7 +131,7 @@ pub fn main() -> Result<()> {
     service_dispatcher::start("openlist_desktop_service", ffi_service_main)
 }
 
-#[cfg(not(windows))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 pub fn main() {
     if let Ok(rt) = Runtime::new() {
         rt.block_on(async {
