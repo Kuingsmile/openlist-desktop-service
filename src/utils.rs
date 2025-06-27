@@ -43,19 +43,16 @@ fn format_duration_ms(duration: std::time::Duration) -> f64 {
 #[cfg(not(windows))]
 fn print_box_header(title: &str, color: &str, use_colors: bool) {
     if use_colors {
-        println!("\n{}{}╭─ {} ─{}", COLOR_BOLD, color, title, COLOR_RESET);
+        println!("\n{COLOR_BOLD}{color}╭─ {title} ─{COLOR_RESET}");
     } else {
-        println!("\n╭─ {} ─", title);
+        println!("\n╭─ {title} ─");
     }
 }
 
 #[cfg(not(windows))]
 fn print_box_footer(color: &str, use_colors: bool) {
     if use_colors {
-        println!(
-            "{}{}╰─────────────────────────────────────{}",
-            color, COLOR_BOLD, COLOR_RESET
-        );
+        println!("{color}{COLOR_BOLD}╰─────────────────────────────────────{COLOR_RESET}");
     } else {
         println!("╰─────────────────────────────────────");
     }
@@ -71,12 +68,9 @@ fn print_box_line(
     use_colors: bool,
 ) {
     if use_colors {
-        println!(
-            "{}{}│ {} {}: {}{}{}{}",
-            color, COLOR_BOLD, icon, label, value_color, value, color, COLOR_RESET
-        );
+        println!("{color}{COLOR_BOLD}│ {icon} {label}: {value_color}{value}{color}{COLOR_RESET}");
     } else {
-        println!("│ {}: {}", label, value);
+        println!("│ {label}: {value}");
     }
 }
 
@@ -154,7 +148,7 @@ fn print_command_success(command_str: &str, execution_time: std::time::Duration)
     print_box_line(
         "⚡",
         "Duration",
-        &format!("{:.3}ms", duration_ms),
+        &format!("{duration_ms:.3}ms"),
         COLOR_GREEN,
         COLOR_GREEN,
         use_colors,
@@ -189,15 +183,15 @@ fn handle_command_failure(
 
     let mut error_msg = String::with_capacity(256);
     let _ = writeln!(error_msg, "Command execution failed:");
-    let _ = writeln!(error_msg, "Command: {}", command_str);
+    let _ = writeln!(error_msg, "Command: {command_str}");
     let _ = writeln!(error_msg, "Status: {}", output.status);
     let _ = writeln!(
         error_msg,
         "Duration: {:.3}ms",
         execution_time.as_secs_f64() * 1000.0
     );
-    let _ = writeln!(error_msg, "stdout: {}", stdout);
-    let _ = write!(error_msg, "stderr: {}", stderr);
+    let _ = writeln!(error_msg, "stdout: {stdout}");
+    let _ = write!(error_msg, "stderr: {stderr}");
 
     Err(anyhow::anyhow!(error_msg))
 }
@@ -226,7 +220,7 @@ fn print_command_failure_debug(
     print_box_line(
         "⚡",
         "Duration",
-        &format!("{:.3}ms", duration_ms),
+        &format!("{duration_ms:.3}ms"),
         COLOR_RED,
         COLOR_RED,
         use_colors,
@@ -249,10 +243,7 @@ fn print_command_failure_debug(
     );
 
     if use_colors {
-        eprintln!(
-            "{}{}├─────────────────────────────────────{}",
-            COLOR_RED, COLOR_BOLD, COLOR_RESET
-        );
+        eprintln!("{COLOR_RED}{COLOR_BOLD}├─────────────────────────────────────{COLOR_RESET}");
     } else {
         eprintln!("├─────────────────────────────────────");
     }
@@ -268,10 +259,7 @@ fn print_command_failure_debug(
     print_debug_hints_section(status, stderr, use_colors);
 
     if use_colors {
-        eprintln!(
-            "{}{}╰─────────────────────────────────────{}\n",
-            COLOR_RED, COLOR_BOLD, COLOR_RESET
-        );
+        eprintln!("{COLOR_RED}{COLOR_BOLD}╰─────────────────────────────────────{COLOR_RESET}\n");
     } else {
         eprintln!("╰─────────────────────────────────────\n");
     }
@@ -280,28 +268,22 @@ fn print_command_failure_debug(
 #[cfg(not(windows))]
 fn print_output_section(title: &str, output: &str, color: &str, use_colors: bool) {
     if use_colors {
-        eprintln!("{}{}│ {}:{}", color, COLOR_BOLD, title, COLOR_RESET);
+        eprintln!("{color}{COLOR_BOLD}│ {title}:{COLOR_RESET}");
     } else {
-        eprintln!("│ {}:", title);
+        eprintln!("│ {title}:");
     }
 
     for (i, line) in output.lines().enumerate() {
         let line_num = format!("{:>3}", i + 1);
         if use_colors {
-            eprintln!(
-                "{}{}│ {} │ {}{}{}",
-                color, COLOR_BOLD, line_num, COLOR_RESET, line, color
-            );
+            eprintln!("{color}{COLOR_BOLD}│ {line_num} │ {COLOR_RESET}{line}{color}");
         } else {
-            eprintln!("│ {} │ {}", line_num, line);
+            eprintln!("│ {line_num} │ line{}");
         }
     }
 
     if use_colors {
-        eprintln!(
-            "{}{}├─────────────────────────────────────{}",
-            COLOR_RED, COLOR_BOLD, COLOR_RESET
-        );
+        eprintln!("{COLOR_RED}{COLOR_BOLD}├─────────────────────────────────────{COLOR_RESET}");
     } else {
         eprintln!("├─────────────────────────────────────");
     }
@@ -310,10 +292,7 @@ fn print_output_section(title: &str, output: &str, color: &str, use_colors: bool
 #[cfg(not(windows))]
 fn print_debug_hints_section(status: &std::process::ExitStatus, stderr: &str, use_colors: bool) {
     if use_colors {
-        eprintln!(
-            "{}{}│ 💡 DEBUGGING HINTS:{}",
-            COLOR_YELLOW, COLOR_BOLD, COLOR_RESET
-        );
+        eprintln!("{COLOR_YELLOW}{COLOR_BOLD}│ 💡 DEBUGGING HINTS:{COLOR_RESET}");
     } else {
         eprintln!("│ DEBUGGING HINTS:");
     }
@@ -324,7 +303,7 @@ fn print_debug_hints_section(status: &std::process::ExitStatus, stderr: &str, us
 #[cfg(not(windows))]
 fn print_debug_hints(status: &std::process::ExitStatus, stderr: &str, use_colors: bool) {
     let hint_prefix = if use_colors {
-        format!("{}{}│    • ", COLOR_YELLOW, COLOR_BOLD)
+        format!("{COLOR_YELLOW}{COLOR_BOLD}│    • ")
     } else {
         "│    • ".to_string()
     };
@@ -339,12 +318,11 @@ fn print_debug_hints(status: &std::process::ExitStatus, stderr: &str, use_colors
             130 => "Script terminated by Ctrl+C",
             _ => {
                 return eprintln!(
-                    "{}Exit code {}: Check command documentation{}",
-                    hint_prefix, code, reset
+                    "{hint_prefix}Exit code {code}: Check command documentation{reset}"
                 );
             }
         };
-        eprintln!("{}{}{}", hint_prefix, hint, reset);
+        eprintln!("{hint_prefix}{hint}{reset}");
     }
 
     let error_hints = [
@@ -368,7 +346,7 @@ fn print_debug_hints(status: &std::process::ExitStatus, stderr: &str, use_colors
 
     for (patterns, hint) in error_hints {
         if patterns.iter().any(|pattern| stderr.contains(pattern)) {
-            eprintln!("{}{}{}", hint_prefix, hint, reset);
+            eprintln!("{hint_prefix}{hint}{reset}");
         }
     }
 }

@@ -71,7 +71,7 @@ pub async fn run_service() -> anyhow::Result<()> {
     });
 
     if let Err(err) = run_ipc_server().await {
-        error!("HTTP API server error: {}", err);
+        error!("HTTP API server error: {err}");
     }
 
     Ok(())
@@ -101,7 +101,7 @@ pub fn stop_service() -> anyhow::Result<()> {
     match utils::detect_linux_init_system() {
         "openrc" => {
             std::process::Command::new("rc-service")
-                .args(&["openlist-desktop-service", "stop"])
+                .args(["openlist-desktop-service", "stop"])
                 .output()
                 .map_err(|e| anyhow::anyhow!("Failed to execute rc-service stop: {}", e))?;
         }

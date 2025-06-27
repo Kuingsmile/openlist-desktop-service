@@ -72,7 +72,7 @@ fn get_current_timestamp() -> u64 {
 pub static CORE_MANAGER: Lazy<Mutex<CoreManager>> = Lazy::new(|| {
     let mut manager = CoreManager::new();
     if let Err(e) = manager.load_config() {
-        error!("Failed to load process configurations: {}", e);
+        error!("Failed to load process configurations: {e}");
     }
     Mutex::new(manager)
 });
@@ -96,25 +96,22 @@ impl CoreManager {
         if !config_path.exists() {
             if let Some(parent) = config_path.parent() {
                 std::fs::create_dir_all(parent)
-                    .with_context(|| format!("Failed to create config directory: {:?}", parent))?;
+                    .with_context(|| format!("Failed to create config directory: {parent:?}"))?;
             }
             File::create(&config_path)
-                .with_context(|| format!("Failed to create config file: {:?}", config_path))?;
-            info!(
-                "No configuration file found at {:?}, starting with empty configuration",
-                config_path
-            );
+                .with_context(|| format!("Failed to create config file: {config_path:?}"))?;
+            info!("Loading process configurations from {:?}", config_path);
             return Ok(());
         }
 
-        info!("Loading process configurations from {:?}", config_path);
+        info!("Loading process configurations from {config_path:?}");
 
         let file = File::open(&config_path)
-            .with_context(|| format!("Failed to open config file: {:?}", config_path))?;
+            .with_context(|| format!("Failed to open config file: {config_path:?}"))?;
 
         let reader = BufReader::new(file);
         let configs: Vec<ProcessConfig> = serde_json::from_reader(reader)
-            .with_context(|| format!("Failed to parse config file: {:?}", config_path))?;
+            .with_context(|| format!("Failed to parse config file: {config_path:?}"))?;
 
         let process_manager = self.process_manager.inner.lock();
         let mut processes = process_manager.processes.lock();
@@ -141,7 +138,7 @@ impl CoreManager {
 
         if let Some(parent) = config_path.parent() {
             std::fs::create_dir_all(parent)
-                .with_context(|| format!("Failed to create config directory: {:?}", parent))?;
+                .with_context(|| format!("Failed to create config directory: {parent:?}"))?;
         }
 
         let process_manager = self.process_manager.inner.lock();
@@ -160,10 +157,10 @@ impl CoreManager {
             .create(true)
             .truncate(true)
             .open(&config_path)
-            .with_context(|| format!("Failed to create config file: {:?}", config_path))?;
+            .with_context(|| format!("Failed to create config file: {config_path:?}"))?;
 
         serde_json::to_writer_pretty(file, &configs)
-            .with_context(|| format!("Failed to write config file: {:?}", config_path))?;
+            .with_context(|| format!("Failed to write config file: {config_path:?}"))?;
 
         info!("Successfully saved process configurations");
         Ok(())
@@ -187,7 +184,7 @@ impl CoreManager {
         } else {
             let config_dir = get_config_dir()?;
             config_dir
-                .join(format!("process_{}.log", id))
+                .join(format!("process_{id}.log"))
                 .to_string_lossy()
                 .to_string()
         };
@@ -219,7 +216,7 @@ impl CoreManager {
 
         // Save configuration to disk
         if let Err(e) = self.save_config() {
-            error!("Failed to save configuration after creating process: {}", e);
+            error!("Failed to save configuration after creating process: {e}");
         }
 
         info!(
@@ -279,7 +276,7 @@ impl CoreManager {
         drop(process_manager);
 
         if let Err(e) = self.save_config() {
-            error!("Failed to save configuration after updating process: {}", e);
+            error!("Failed to save configuration after updating process: {e}");
         }
 
         info!(
@@ -305,7 +302,7 @@ impl CoreManager {
         drop(process_manager);
 
         if let Err(e) = self.save_config() {
-            error!("Failed to save configuration after deleting process: {}", e);
+            error!("Failed to save configuration after deleting process: {e}");
         }
 
         info!(
@@ -381,7 +378,7 @@ impl CoreManager {
     }
 
     pub fn start_process(&mut self, id: &str) -> Result<()> {
-        info!("Starting process: {}", id);
+        info!("Starting process: {id}");
 
         let process_manager = self.process_manager.inner.lock();
         let processes = process_manager.processes.lock();
@@ -431,7 +428,7 @@ impl CoreManager {
     }
 
     pub fn stop_process(&mut self, id: &str) -> Result<()> {
-        info!("Stopping process: {}", id);
+        info!("Stopping process: {id}");
 
         let process_manager = self.process_manager.inner.lock();
         let processes = process_manager.processes.lock();
@@ -547,9 +544,9 @@ impl CoreManager {
         for id in process_ids {
             //check if the process is already running
             if let Err(e) = self.start_process(&id) {
-                error!("Failed to auto-start process {}: {}", id, e);
+                error!("Failed to auto-start process {id}: {e}");
             } else {
-                info!("Successfully auto-started process {}", id);
+                info!("Successfully auto-started process {id}");
             }
         }
 

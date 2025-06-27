@@ -33,7 +33,7 @@ pub fn is_process_running(pid: i32) -> bool {
     if pid <= 0 {
         return false;
     }
-    let check_process = Command::new("ps").args(&["-p", &pid.to_string()]).output();
+    let check_process = Command::new("ps").args(["-p", &pid.to_string()]).output();
 
     match check_process {
         Ok(output) => output.status.success(),
@@ -49,7 +49,7 @@ pub fn ensure_executable_permissions(binary_path: &str) -> io::Result<()> {
     if !path.exists() {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,
-            format!("Binary not found: {}", binary_path),
+            format!("Binary not found: {binary_path}"),
         ));
     }
 
@@ -68,9 +68,9 @@ pub fn ensure_executable_permissions(binary_path: &str) -> io::Result<()> {
         new_permissions.set_mode(new_mode);
 
         std::fs::set_permissions(path, new_permissions)?;
-        info!("Successfully added execute permissions to {}", binary_path);
+        info!("Successfully added execute permissions to {binary_path}");
     } else {
-        info!("Binary {} already has execute permissions", binary_path);
+        info!("Binary {binary_path} already has execute permissions");
     }
 
     Ok(())
@@ -223,7 +223,7 @@ pub fn spawn_process_with_privileges(
             if Command::new("which")
                 .arg("sudo")
                 .output()
-                .map_or(false, |o| o.status.success())
+                .is_ok_and(|o| o.status.success())
             {
                 args_to_run.insert(0, command);
                 command_to_run = "sudo".to_string();
@@ -325,19 +325,12 @@ pub fn kill_process(pid: u32) -> io::Result<()> {
     info!("output: {:?}", output);
 
     if output.status.success() {
-        info!(
-            "Successfully terminated process PID {} with administrator privileges",
-            pid
-        );
+        info!("Successfully terminated process PID {pid} with administrator privileges");
         Ok(())
     } else {
-        error!(
-            "Failed to terminate process PID {} with administrator privileges:",
-            pid
-        );
+        error!("Failed to terminate process PID {pid} with administrator privileges:");
         Err(io::Error::other(format!(
-            "Process termination with admin privileges failed: {}",
-            pid
+            "Process termination with admin privileges failed: {pid}"
         )))
     }
 }
@@ -353,11 +346,11 @@ pub fn kill_process(pid: u32) -> io::Result<()> {
         .args(&["-p", &pid.to_string()])
         .output()?;
     if !check_process.status.success() {
-        info!("Process PID {} does not exist, skipping termination", pid);
+        info!("Process PID {pid} does not exist, skipping termination");
         return Ok(());
     }
 
-    info!("Sending SIGINT signal to process PID {} with sudo", pid);
+    info!("Sending SIGINT signal to process PID {pid} with sudo");
     let kill_int_args = &["-2", &pid.to_string()];
     let output = Command::new("sudo")
         .arg("kill")
@@ -365,32 +358,25 @@ pub fn kill_process(pid: u32) -> io::Result<()> {
         .output()?;
 
     if output.status.success() {
-        info!(
-            "Successfully sent SIGINT signal to process PID {} with sudo",
-            pid
-        );
+        info!("Successfully sent SIGINT signal to process PID {pid} with sudo");
         std::thread::sleep(std::time::Duration::from_millis(1000));
 
-        let check_process = Command::new("ps")
-            .args(&["-p", &pid.to_string()])
-            .output()?;
+        let check_process = Command::new("ps").args(["-p", &pid.to_string()]).output()?;
 
         if !check_process.status.success() {
             return Ok(());
         }
 
         warn!(
-            "Process {} did not terminate after receiving SIGINT, attempting to send SIGKILL with sudo",
-            pid
+            "Process {pid} did not terminate after receiving SIGINT, attempting to send SIGKILL with sudo"
         );
     } else {
         warn!(
-            "Failed to send SIGINT to process PID {} with sudo, attempting to send SIGKILL with sudo",
-            pid
+            "Failed to send SIGINT to process PID {pid} with sudo, attempting to send SIGKILL with sudo"
         );
     }
 
-    info!("Sending SIGKILL signal to process PID {} with sudo", pid);
+    info!("Sending SIGKILL signal to process PID {pid} with sudo");
     let kill_kill_args = &["-9", &pid.to_string()];
     let output = Command::new("sudo")
         .arg("kill")
@@ -404,15 +390,11 @@ pub fn kill_process(pid: u32) -> io::Result<()> {
     };
 
     if output.status.success() {
-        info!(
-            "Successfully terminated process PID {} using SIGKILL with sudo",
-            pid
-        );
+        info!("Successfully terminated process PID {pid} using SIGKILL with sudo");
         Ok(())
     } else {
         error!(
-            "Failed to terminate process PID {} using SIGKILL with sudo: {}",
-            pid,
+            "Failed to terminate process PID {pid} using SIGKILL with sudo: {}",
             stderr.trim()
         );
         Err(io::Error::other(format!(

@@ -1,6 +1,7 @@
 name: Cargo Check
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "main", "dev" ]
   pull_request:
@@ -10,48 +11,6 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  check:
-    name: Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Cache target directory
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-target-check-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-target-check-
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl-dev
-
-      - name: Run cargo check
-        run: cargo check --all-targets --all-features
-
-      - name: Run cargo clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
-
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-
   check-cross-platform:
     name: Check Cross Platform
     strategy:
@@ -101,3 +60,9 @@ jobs:
 
       - name: Run cargo check
         run: cargo check --target ${{ matrix.target }} --all-targets --all-features
+      
+      - name: Run cargo clippy
+        run: cargo clippy --target ${{ matrix.target }} --all-targets --all-features -- -D warnings
+      
+      - name: Check formatting
+        run: cargo fmt --all -- --check
